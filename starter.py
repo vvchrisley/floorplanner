@@ -6,11 +6,10 @@
 5) Repeat steps 3 & 4 until the total distance is 0.
 """
 
-"""
-Current issues with program:
-- Still doesn't sort the matrix correctly
-    o This is likely due to annealing not being implemented yet.
-"""
+
+# Current issues with program:
+#  - The program does not have a stopping condition for when it hits a local minima. 
+
 import numpy as np #used to create array
 # 1) Put the numbers 1-9 into a 3x3 array in random order.
 #Create a 3x3 array with numbers 1-9 in random order
@@ -20,6 +19,9 @@ import numpy as np #used to create array
 #           0 0 0
 
 def create_matrix(numbers):
+    """
+    Shuffles numbers and returns them as a 3x3 matrix.
+    """
     np.random.shuffle(numbers)
     random_matrix_3x3 = numbers.reshape(3,3)
     return random_matrix_3x3
@@ -36,6 +38,9 @@ def create_matrix(numbers):
 # y = column
 
 def calc_MANH_distance(matrix, n):
+    """
+    Calculates the manhattan distance of number n from its target position in the matrix.
+    """
     target_row_formula = (n-1) // 3
     target_col_formula = (n-1) % 3
     
@@ -57,27 +62,22 @@ def calc_MANH_distance(matrix, n):
     return manh_distance
 #end calc_MANH_distance
 
-#swaps and decreases total manh distance to 0
-"""
-Whats needed in the evaluate_swap function?
-variables:
-- r1, r2, c1, c2 - int
-- updated_manh_distance - int
-- updated_matrix - matrix/array
-- was_improved - Boolean
-parms: matrix, old_manh_distance
 
-functionality: 
-    Randomly choose two of the numbers (or 2 positions for better scale). 
-    Determine whether swapping them would decrease the sum of distances.
-    If swapping them would decrease the total distance, accept the swap. 
-    Otherwise, leave the array how it was before.
-    
-returns: updated_Matrix, updated_manh_distance 
-random_matrix_3x3, total_manh_distance, was_improved   
-"""
-#evaluate_swap is not complete yet 
+# TODO: #1 Implement annealing to avoid local minima
 def evaluate_swap(matrix, total_manh_distance):
+    """
+    Evaluates whether swapping two random positions improves total manhattan distance.
+    Goal is to get manhattan distance as low as possible, ideally 0.
+    
+    Args:
+        matrix: current grid
+        total_manh_distance: current total distance
+        
+    Returns:
+        matrix: updated or reverted grid
+        updated_manh_distance: new or original distance
+        was_improved: True if swap was accepted, False otherwise
+    """
     updated_manh_distance = 0
     updated_matrix = matrix
     old_distance = total_manh_distance
@@ -85,12 +85,10 @@ def evaluate_swap(matrix, total_manh_distance):
     pos1, pos2 = np.random.choice(np.arange(len(matrix.flatten())), 2, replace=False)
     print(f"pos1: {pos1} and pos2 {pos2}")
     was_improved = False
-    #unique_elements_1d = rng.choice(9, size=9, replace=False)
+
     rows = len(matrix)
     cols = len(matrix[0])
     total_elements = rows * cols
-    #may need a separate function to perform the swap
-    swaps = 0 #gets the amount of swaps used to get optimized outcome
     
     r1, c1 = divmod(pos1, cols)
     r2, c2 = divmod(pos2,cols)
@@ -99,6 +97,7 @@ def evaluate_swap(matrix, total_manh_distance):
     print(r2,c2)
     print(matrix[r1,c1])
     print(matrix[r2,c2])
+    
     #performs swap
     matrix[r1][c1], matrix[r2][c2] = matrix[r2][c2], matrix[r1][c1]
    
@@ -114,6 +113,7 @@ def evaluate_swap(matrix, total_manh_distance):
     if(updated_manh_distance < total_manh_distance):
         was_improved = True
     else:
+        #Revert the swap if manh distance did not improve
         matrix[r1][c1], matrix[r2][c2] = matrix[r2][c2], matrix[r1][c1]
         updated_manh_distance = old_distance
     return updated_matrix, updated_manh_distance, was_improved
@@ -121,8 +121,9 @@ def evaluate_swap(matrix, total_manh_distance):
 
 
 #simplified goal: 
-#   Rearrange the numbers in the array in the order 1-9
-#Calculate the manhattan distance
+# 1. Rearrange the numbers in the array in the order 1-9
+# 2. Calculate the manhattan distance of each number from its correct position,
+#    and find the sum of all 9 distances.
 
 def main():
     numbers = np.arange(1,10) #creates list of numbers 1-9
@@ -166,6 +167,7 @@ def main():
     else:
         print(f"Stuck at distance {total_manh_distance} after {max_iterations} iterations")    
 
-#end main    
+#end main
+    
 if __name__ == '__main__':
     main()
