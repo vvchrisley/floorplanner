@@ -7,10 +7,9 @@
 """
 
 
-# Current issues with program:
-#  - The program does not have a stopping condition for when it hits a local minima. 
 
 import numpy as np #used to create array
+import random, math 
 # 1) Put the numbers 1-9 into a 3x3 array in random order.
 #Create a 3x3 array with numbers 1-9 in random order
 
@@ -56,15 +55,14 @@ def calc_MANH_distance(matrix, n):
 
     manh_distance = np.abs(man_x + man_y)
     
-    print(f"Current position of {n}: [{current_row}][{current_col}]")
-    print(f"Target position of {n}: [{target_row}][{target_col}]")
+    #print(f"Current position of {n}: [{current_row}][{current_col}]")
+    #print(f"Target position of {n}: [{target_row}][{target_col}]")
     
     return manh_distance
 #end calc_MANH_distance
 
 
-# TODO: #1 Implement annealing to avoid local minima
-def evaluate_swap(matrix, total_manh_distance):
+def evaluate_swap(matrix, total_manh_distance,temperature):
     """
     Evaluates whether swapping two random positions improves total manhattan distance.
     Goal is to get manhattan distance as low as possible, ideally 0.
@@ -72,6 +70,7 @@ def evaluate_swap(matrix, total_manh_distance):
     Args:
         matrix: current grid
         total_manh_distance: current total distance
+        temperature: temperature for annealing, higher means more likely to accept worse solutions
         
     Returns:
         matrix: updated or reverted grid
@@ -82,8 +81,9 @@ def evaluate_swap(matrix, total_manh_distance):
     updated_matrix = matrix
     old_distance = total_manh_distance
     
+    
     pos1, pos2 = np.random.choice(np.arange(len(matrix.flatten())), 2, replace=False)
-    print(f"pos1: {pos1} and pos2 {pos2}")
+    #print(f"pos1: {pos1} and pos2 {pos2}")
     was_improved = False
 
     rows = len(matrix)
@@ -93,10 +93,10 @@ def evaluate_swap(matrix, total_manh_distance):
     r1, c1 = divmod(pos1, cols)
     r2, c2 = divmod(pos2,cols)
 
-    print(r1,c1)
-    print(r2,c2)
-    print(matrix[r1,c1])
-    print(matrix[r2,c2])
+    #print(r1,c1)
+    #print(r2,c2)
+    #print(matrix[r1,c1])
+    #print(matrix[r2,c2])
     
     #performs swap
     matrix[r1][c1], matrix[r2][c2] = matrix[r2][c2], matrix[r1][c1]
@@ -106,18 +106,20 @@ def evaluate_swap(matrix, total_manh_distance):
         man_distance = calc_MANH_distance(matrix, i)
         updated_manh_distance += man_distance
         
-        print()
-        print(f"The total manhattan distance is: {updated_manh_distance}")
-        print(f"The old distance is {old_distance}")
-            
-    if(updated_manh_distance < total_manh_distance):
+        #print()
+        #print(f"The total manhattan distance is: {updated_manh_distance}")
+        #print(f"The old distance is {old_distance}")
+        
+    #get delta for annealing  
+    delta = updated_manh_distance - old_distance         
+    
+    if(random.random() < math.exp(-delta / temperature)):
         was_improved = True
     else:
         #Revert the swap if manh distance did not improve
         matrix[r1][c1], matrix[r2][c2] = matrix[r2][c2], matrix[r1][c1]
         updated_manh_distance = old_distance
     return updated_matrix, updated_manh_distance, was_improved
-#end evaluate_swap    
 
 
 #simplified goal: 
@@ -130,7 +132,11 @@ def main():
     total_manh_distance = 0
     #creates the matrix:
     random_matrix_3x3 = create_matrix(numbers)
-    print(random_matrix_3x3)
+    old_random_matrix_3x3 = random_matrix_3x3.copy() #keep track of old matrix for comparison
+    temperature = 100 #placeholder for temperature in annealing
+    cooling_rate = 0.99 #placeholder for cooling rate in annealing
+    
+    #print(random_matrix_3x3)
     
     #establishes rows and cols
     rows = len(random_matrix_3x3)
@@ -149,23 +155,28 @@ def main():
     for i in range(1,total_elements + 1):
         man_distance = calc_MANH_distance(random_matrix_3x3, i)
         total_manh_distance += man_distance
-        print()
-        print(f"The manhattan distance for {i} is {man_distance}")
-        print()
-        print(f"The total manhattan distance is: {total_manh_distance}")
+        #print()
+        #print(f"The manhattan distance for {i} is {man_distance}")
+        #print()
+        #print(f"The total manhattan distance is: {total_manh_distance}")
         
     #Swapping positions
-    max_iterations = 100
+    max_iterations = 1000
     iterations = 0
     was_improved = False
     while total_manh_distance > 0 and iterations < max_iterations:
-        random_matrix_3x3, total_manh_distance, was_improved = evaluate_swap(random_matrix_3x3, total_manh_distance)
+        random_matrix_3x3, total_manh_distance, was_improved = evaluate_swap(random_matrix_3x3, total_manh_distance, temperature)
+        temperature *= cooling_rate #Cool down the temperature for annealing
         iterations += 1
     if total_manh_distance == 0:
         print(f"manh distance === 0 after {iterations} iterations")
-        print(random_matrix_3x3)
+        print(f"Total temperature: {temperature}")
+        print(f"Starting matrix: \n{old_random_matrix_3x3}")
+        print(f"Current matrix: \n{random_matrix_3x3}")    
     else:
-        print(f"Stuck at distance {total_manh_distance} after {max_iterations} iterations")    
+        print(f"Stuck at distance {total_manh_distance} after {max_iterations} iterations")
+        print(f"Old matrix: \n{old_random_matrix_3x3}")
+        print(f"Current matrix: \n{random_matrix_3x3}")    
 
 #end main
     
