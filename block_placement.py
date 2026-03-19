@@ -7,33 +7,37 @@ NUM_BLOCKS: int
 
 def get_abs_pos(S1, graph, widths, heights):
     '''
-    Find the absolute position of every block b in the current configuration
+    Find the absolute position of every block in the current configuration
     along with the total height and width.
     '''
     pos = [[0, 0]] * NUM_BLOCKS
-    h_paths = []
-    v_paths = []
+    h_stacks = []
+    v_stacks = []
 
     for idx in graph:
         curr_block = S1[idx]
-        curr_pos = [0, 0]
 
-        for wth, end in reversed(h_paths):
+        # find the longest horizontal stack this should be to the right of
+        for wth, end in reversed(h_stacks):
             if end < idx:
-                curr_pos[0] = wth
+                pos[curr_block][0] = wth
                 break
-
-        for hgt, end in reversed(v_paths):
+        # and the tallest vertical stack it should be above
+        for hgt, end in reversed(v_stacks):
             if end > idx:
-                curr_pos[1] = hgt
+                pos[curr_block][1] = hgt
                 break
 
-        pos[curr_block] = curr_pos
-        insort(h_paths, (curr_pos[0] + widths[curr_block], idx))
-        insort(v_paths, (curr_pos[1] + heights[curr_block], idx))
+        # after placing a block, others can be stacked to the right or above it.
+        # save the position those blocks would be inserted at, along with the index
+        # so we can tell whether the graph says it should be placed there.
+        x, y = pos[curr_block]
+        insort(h_stacks, (x + widths[curr_block], idx))
+        insort(v_stacks, (y + heights[curr_block], idx))
 
-    width = h_paths[-1][0]
-    height = v_paths[-1][0]
+    # get the maximum dimensions of the entire layout
+    width = h_stacks[-1][0]
+    height = v_stacks[-1][0]
 
     return pos, width, height
 
