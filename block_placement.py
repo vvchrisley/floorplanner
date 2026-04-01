@@ -5,12 +5,23 @@ from bisect import insort
 
 NUM_BLOCKS: int
 
+
+def get_total_wire_len(wires, block_positions):
+    total_len = 0
+    for block1, block2, weight in wires:
+        x1, y1 = block_positions[int(block1)]
+        x2, y2 = block_positions[int(block2)]
+        manh_dist = abs(x1 - x2) + abs(y1 - y2)
+        total_len += manh_dist * weight
+    return total_len
+
+
 def get_abs_pos(S1, graph, widths, heights):
     '''
     Find the absolute position of every block in the current configuration
     along with the total height and width.
     '''
-    pos = [[0, 0]] * NUM_BLOCKS
+    pos = [[0, 0] for i in range(NUM_BLOCKS)]
     h_stacks = []
     v_stacks = []
 
@@ -61,6 +72,7 @@ if __name__ == '__main__':
 
     widths = [size[0] for size in floorplan['blocks']]
     heights = [size[1] for size in floorplan['blocks']]
+    wires = floorplan['wires']
 
     NUM_BLOCKS = len(widths)
 
@@ -68,6 +80,8 @@ if __name__ == '__main__':
     positions, total_w, total_h = get_abs_pos(S1, graph, widths, heights)
 
     floorplan['block_positions'] = positions
+    print('Area:', total_h * total_w)
+    print('Wire length:', get_total_wire_len(wires, positions))
 
     with open(input_name + '_result.json', 'w') as f:
         json.dump(floorplan, f, indent=4)
