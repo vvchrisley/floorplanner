@@ -1,4 +1,8 @@
 """
+Update 04/04/2026: starter.py now containsboth the 3x3 warmup
+                   and the floorplanning optimzation
+
+
 1) Put the numbers 1-9 into a 3x3 array in random order.
 2) With the goal of the numbers being in order, calculate the manhattan distance of each number from its correct position, and find the sum of all 9 distances.
 3) Randomly choose two of the numbers. Determine whether swapping them would decrease the sum of distances.
@@ -9,7 +13,10 @@
 
 
 import numpy as np #used to create array
-import random, math 
+import random, math
+import block_placement 
+from block_placement import get_abs_pos, get_total_wire_len
+
 # 1) Put the numbers 1-9 into a 3x3 array in random order.
 #Create a 3x3 array with numbers 1-9 in random order
 
@@ -120,6 +127,85 @@ def evaluate_swap(matrix, total_manh_distance,temperature):
         matrix[r1][c1], matrix[r2][c2] = matrix[r2][c2], matrix[r1][c1]
         updated_manh_distance = old_distance
     return updated_matrix, updated_manh_distance, was_improved
+#end evaluate_swap
+
+
+def new_evaluate_swap(S0, S1, graph, widths, heights, wires, temperature, old_cost):
+    """
+    Evaluates whether swapping two random positions in S0 or S1 improves the layout cost.
+    Uses simulated annealing to occasionally accept worse swaps to avoid local minima.
+    
+    Args:
+        S0: first sequence of the sequence pair
+        S1: second sequence of the sequence pair
+        graph: constraint graph derived from S0 and S1
+        widths: list of block widths
+        heights: list of block heights
+        wires: list of wire connections [block1, block2, weight]
+        temperature: current annealing temperature, higher means more likely to accept worse solutions
+        old_cost: current layout cost before swap
+    Returns:
+        S0: updated or reverted sequence
+        S1: updated or reverted sequence
+        graph: updated or reverted constraint graph
+        cost: new cost if swap accepted, old cost if reverted
+    """
+    
+    pos1, pos2 = random.sample(range(len(S0)),2)
+    
+    swapped_S0 = False
+    
+    #coin flip, choose S0 or S1
+    if random.random() < 0.5:
+        #S0 swap
+        S0[pos1], S0[pos2] = S0[pos2], S0[pos1]
+        graph[pos1],graph[pos2] = graph[pos2],graph[pos1]
+        swapped_S0 = True
+    else:
+        #S1 swap
+        S1[pos1], S1[pos2] = S1[pos2], S1[pos1]
+        #updated graph - swap values pos1 and pos2 wherever they appear
+        for i in range(len(graph)):
+            if graph[i] == pos1:
+                graph[i] = pos2
+            elif graph[i] == pos2:
+                graph[i] = pos1
+                
+        
+    #get new positions
+    positions, total_Width, total_Height = get_abs_pos(S1, graph, widths, heights)
+    
+    #calculate new cost
+    new_cost = (total_Width * total_Height) + get_total_wire_len(wires, positions)
+
+    #annealing acceptance
+    #get delta for annealing  
+    delta = new_cost - old_cost         
+    exponent = -delta / temperature
+    
+    if random.random() < (1.0 if exponent > 700 else math.exp(exponent)):
+        #Value accepted/improved
+        was_improved = True
+        return S0, S1, graph, new_cost
+    else:
+        #Revert the swap if manh distance did not improve
+        if(swapped_S0):
+            #undo S0 swap
+            S0[pos1], S0[pos2] = S0[pos2], S0[pos1]
+            graph[pos1], graph[pos2] = graph[pos2], graph[pos1]
+        else:
+            #undo S1 swap
+            for i in range(len(graph)):
+                if graph[i] == pos2:
+                    graph[i] = pos1
+                elif graph[i] == pos1:
+                    graph[i] = pos2
+        return S0, S1, graph, old_cost   
+    #print(f"pos1: {pos1} and pos2 {pos2}")
+
+#end evaluate_swap
+
+
 
 
 #simplified goal: 
