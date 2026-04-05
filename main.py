@@ -1,8 +1,4 @@
 # main.py
-# Entry point for the IC floorplanning optimizer.
-# Loads JSON input, runs simulated annealing to minimize layout cost (area + wire length).
-# Usage: python main.py <input_name>
-
 import json
 import block_placement
 import sys
@@ -76,9 +72,13 @@ if __name__ == '__main__':
         iterations += 1
         
     positions_final, final_w, final_h = get_abs_pos(S1, graph, widths, heights)
-    print(f"Final area: {final_w * final_h}")
-    print(f"Final wire length: {get_total_wire_len(wires, positions_final)}")
-    print(f"Final cost: {current_cost}")
+    final_area = final_w * final_h
+    final_wire = get_total_wire_len(wires, positions_final)
+    final_cost = final_area + final_wire
+    
+    print(f"Final area: {final_area}")
+    print(f"Final wire length: {final_wire}")
+    print(f"Final cost: {final_cost}")
     print("--------------------------------------")
     print(f"Target area: {floorplan['target_area']}")
     print(f"Target wire length: {floorplan['target_wire_length']}")
