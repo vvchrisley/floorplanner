@@ -55,7 +55,7 @@ class FloorplannerGUI(QWidget):
         input_name = selected_file.replace('.json', '')
 
         # Run placement script
-        cmd = ['python', 'block_placement.py', input_name]
+        cmd = ['python', 'main.py', input_name]
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode == 0:

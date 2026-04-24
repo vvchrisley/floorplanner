@@ -63,7 +63,7 @@ if __name__ == '__main__':
     print(f"Initial wire length: {get_total_wire_len(wires, positions)}")
     print("-----------------------------------------")
     
-    while iterations < max_iterations and temperature > 0.01:
+    while iterations < max_iterations and temperature > min_temp:
         # call new_evaluate_swap
         S0, S1, graph, current_cost = new_evaluate_swap(S0, S1, graph, widths, heights, wires, temperature, current_cost)
         # update temperature
@@ -82,3 +82,10 @@ if __name__ == '__main__':
     print("--------------------------------------")
     print(f"Target area: {floorplan['target_area']}")
     print(f"Target wire length: {floorplan['target_wire_length']}")
+
+    # output result file for gui
+    floorplan['block_positions'] = positions_final
+
+    output_path = f'{input_name}_result.json'
+    with open(output_path, 'w') as f:
+        json.dump(floorplan, f, indent=4)
