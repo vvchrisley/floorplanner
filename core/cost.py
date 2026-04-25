@@ -2,6 +2,7 @@ import math
 import random
 
 
+# from block_placement.py
 def get_total_wire_len(wires, block_positions):
     total_len = 0
     for block1, block2, weight in wires:

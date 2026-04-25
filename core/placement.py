@@ -5,7 +5,7 @@ from bisect import insort
 
 
 
-
+# from block_placement.py
 def get_abs_pos(S1, graph, widths, heights):
     '''
     Find the absolute position of every block in the current configuration
@@ -19,20 +19,25 @@ def get_abs_pos(S1, graph, widths, heights):
     for idx in graph:
         curr_block = S1[idx]
 
+        # find the longest horizontal stack this should be to the right of
         for wth, end in reversed(h_stacks):
             if end < idx:
                 pos[curr_block][0] = wth
                 break
-
+        # and the tallest vertical stack it should be above
         for hgt, end in reversed(v_stacks):
             if end > idx:
                 pos[curr_block][1] = hgt
                 break
 
+        # after placing a block, others can be stacked to the right or above it.
+        # save the position those blocks would be inserted at, along with the index
+        # so we can tell whether the graph says it should be placed there.
         x, y = pos[curr_block]
         insort(h_stacks, (x + widths[curr_block], idx))
         insort(v_stacks, (y + heights[curr_block], idx))
 
+    # get the maximum dimensions of the entire layout
     width = h_stacks[-1][0] if h_stacks else 0
     height = v_stacks[-1][0] if v_stacks else 0
 
@@ -41,9 +46,11 @@ def get_abs_pos(S1, graph, widths, heights):
 
 def generate_initial_placement(num_blocks):
     block_names = list(range(num_blocks))
-
+    # generate a random sequence pair
     S0 = sample(block_names, k=num_blocks)
     S1 = sample(block_names, k=num_blocks)
+    # constraint graph - if the graph contains the sequence [0, 2, 1], the block at
+    # S1[0] is the leftmost and those at S1[2] and S1[1] are to the right of it and
+    # the blocks at S1[1] and S1[0] are bottommost and the one at S1[2] is above S1[1]
     graph = [S1.index(b) for b in S0]
-
     return S0, S1, graph
