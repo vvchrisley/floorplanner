@@ -1,79 +1,168 @@
 import sys
-import os
-import subprocess
+import json
 
-# PyQt6 GUI components
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QComboBox, QPushButton
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QPushButton,
+    QLabel, QComboBox, QCheckBox, QSpinBox
+)
+from PyQt6.QtCore import QTimer
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+
+from core.placement import generate_initial_placement
+from core.annealer import Annealer
 
 
-# Main application window
 class FloorplannerGUI(QWidget):
+
     def __init__(self):
         super().__init__()
-        self.initUI()
 
-    def initUI(self):
+        self.annealer = None
+        self.widths = None
+        self.heights = None
+        self.wires = None
+
+        self.max_iterations = 10000
+
+        self.init_ui()
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_simulation)
+        self.timer.start(30)
+
+    def init_ui(self):
         layout = QVBoxLayout()
 
-        # Input dropdown
-        self.label = QLabel("Select Input File:")
-        layout.addWidget(self.label)
+        # File selection
+        layout.addWidget(QLabel("Select Input File"))
 
         self.combo = QComboBox()
-        input_files = self.get_input_files()
-        self.combo.addItems(input_files)
+        self.combo.addItems(self.get_inputs())
         layout.addWidget(self.combo)
 
-        # Run button
-        self.button = QPushButton("Run")
-        self.button.clicked.connect(self.run_placement)
-        layout.addWidget(self.button)
+        # Iteration control
+        layout.addWidget(QLabel("Max Iterations"))
+
+        self.iter_input = QSpinBox()
+        self.iter_input.setRange(1, 1_000_000)
+        self.iter_input.setValue(10000)
+        layout.addWidget(self.iter_input)
+
+        # Wire toggle
+        self.wire_checkbox = QCheckBox("Show Wires")
+        self.wire_checkbox.setChecked(True)
+        layout.addWidget(self.wire_checkbox)
+
+        # Buttons
+        self.start_btn = QPushButton("Start")
+        self.start_btn.clicked.connect(self.start)
+        layout.addWidget(self.start_btn)
+
+        self.pause_btn = QPushButton("Pause / Resume")
+        self.pause_btn.clicked.connect(self.pause)
+        layout.addWidget(self.pause_btn)
 
         # Status
-        self.status_label = QLabel("")
-        layout.addWidget(self.status_label)
+        self.status = QLabel("")
+        layout.addWidget(self.status)
+
+        # Plot
+        self.figure, self.ax = plt.subplots()
+        self.canvas = FigureCanvas(self.figure)
+        layout.addWidget(self.canvas)
 
         self.setLayout(layout)
-        self.setWindowTitle('Floorplanner')
-        self.show()
+        self.setWindowTitle("Floorplanner")
 
-    # Get all JSON input files from input directory
-    def get_input_files(self):
-        inputs_dir = './inputs'
-        files = [f for f in os.listdir(inputs_dir) if f.endswith('.json')]
-        return sorted(files)
+    def get_inputs(self):
+        import os
+        return sorted(f for f in os.listdir("./inputs") if f.endswith(".json"))
 
-    # Run block placement
-    def run_placement(self):
-        selected_file = self.combo.currentText()
+    def start(self):
+        file = self.combo.currentText().replace(".json", "")
 
-        # Update status 
-        self.status_label.setText("Running placement")
-        QApplication.processEvents()  # Forces UI to update immediately
+        with open(f"./inputs/{file}.json") as f:
+            data = json.load(f)
 
-        # Sanitize name for block placement code
-        input_name = selected_file.replace('.json', '')
+        self.widths = [b[0] for b in data["blocks"]]
+        self.heights = [b[1] for b in data["blocks"]]
+        self.wires = data["wires"]
 
-        # Run placement script
-        cmd = ['python', 'main.py', input_name]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        self.max_iterations = self.iter_input.value()
 
-        if result.returncode == 0:
-            self.status_label.setText(f"Placement completed for {input_name}.")
-            QApplication.processEvents()
+        num_blocks = len(self.widths)
+        S0, S1, graph = generate_initial_placement(num_blocks)
 
-            # Run visualization script
-            visualize_cmd = ['python', 'visualize.py', f'{input_name}_result.json']
-            subprocess.run(visualize_cmd)
+        self.annealer = Annealer(S0, S1, graph, self.widths, self.heights, self.wires)
 
-            self.status_label.setText("Done.")
-        else:
-            # Show error output
-            self.status_label.setText(f"Error: {result.stderr}")
+    def pause(self):
+        if self.annealer:
+            self.annealer.toggle_pause()
+
+    def update_simulation(self):
+        if not self.annealer:
+            return
+
+        # stop at max iterations
+        if self.annealer.iteration >= self.max_iterations:
+            self.status.setText(f"Done at iter {self.annealer.iteration}")
+            return
+
+        pos, cost = self.annealer.step()
+
+        self.status.setText(
+            f"Cost: {cost:.2f} | Iter: {self.annealer.iteration}"
+        )
+
+        self.draw(pos)
+
+    def draw(self, positions):
+        self.ax.clear()
+
+        # draw blocks
+        for i, (x, y) in enumerate(positions):
+            w = self.widths[i]
+            h = self.heights[i]
+
+            rect = plt.Rectangle((x, y), w, h, alpha=0.6)
+            self.ax.add_patch(rect)
+
+            self.ax.text(
+                x + w / 2,
+                y + h / 2,
+                str(i),
+                ha='center',
+                va='center',
+                fontsize=8
+            )
+
+        # draw wires (optional)
+        if self.wire_checkbox.isChecked():
+            for block1, block2, weight in self.wires:
+                x1, y1 = positions[int(block1)]
+                x2, y2 = positions[int(block2)]
+
+                cx1 = x1 + self.widths[int(block1)] / 2
+                cy1 = y1 + self.heights[int(block1)] / 2
+                cx2 = x2 + self.widths[int(block2)] / 2
+                cy2 = y2 + self.heights[int(block2)] / 2
+
+                self.ax.plot([cx1, cx2], [cy1, cy2], linewidth=0.5, alpha=0.6)
+
+        self.ax.set_aspect("equal")
+        self.ax.grid(True, alpha=0.3)
+
+        self.ax.relim()
+        self.ax.autoscale_view()
+
+        self.canvas.draw()
 
 
-# Gui entry
-if __name__ == '__main__':
+# Entry point
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    ex = FloorplannerGUI()
+    window = FloorplannerGUI()
+    window.show()
     sys.exit(app.exec())
