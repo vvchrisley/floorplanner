@@ -26,6 +26,8 @@ class FloorplannerGUI(QWidget):
 
         self.max_iterations = 10000
 
+        self.initial_temp = None
+
         self.init_ui()
 
         self.timer = QTimer()
@@ -97,6 +99,9 @@ class FloorplannerGUI(QWidget):
 
         self.annealer = Annealer(S0, S1, graph, self.widths, self.heights, self.wires)
 
+        self.initial_temp = getattr(self.annealer, "temperature", 1.0)
+
+
     def pause(self):
         if self.annealer:
             self.annealer.toggle_pause()
@@ -112,8 +117,26 @@ class FloorplannerGUI(QWidget):
 
         pos, cost = self.annealer.step()
 
+        temp = getattr(self.annealer, "temperature", None)
+
+        # normalize temperature for finding rgb
+        if temp is not None and self.initial_temp:
+            t_norm = max(0.0, min(1.0, temp / self.initial_temp))
+        else:
+            t_norm = 0.0
+
+        # calculate rgb
+        r = int(255 * t_norm)
+        b = int(255 * (1 - t_norm))
+        g = 0
+
         self.status.setText(
-            f"Cost: {cost:.2f} | Iter: {self.annealer.iteration}"
+            f"Cost: {cost:.2f} | Iter: {self.annealer.iteration} | Temp: {temp:.4f}"
+        )
+
+        # assign color
+        self.status.setStyleSheet(
+            f"color: rgb({r}, {g}, {b});"
         )
 
         self.draw(pos)
@@ -138,7 +161,7 @@ class FloorplannerGUI(QWidget):
                 fontsize=8
             )
 
-        # draw wires (optional)
+        # draw wires
         if self.wire_checkbox.isChecked():
             for block1, block2, weight in self.wires:
                 x1, y1 = positions[int(block1)]
