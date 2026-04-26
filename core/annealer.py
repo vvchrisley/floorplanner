@@ -67,7 +67,8 @@ class Annealer:
         #get delta for annealing  
         delta = new_cost - self.cost
         #annealing acceptance
-        accept = random.random() < math.exp(-delta / self.temperature)
+        power = max(-500, min(-delta / self.temperature, 500))
+        accept = random.random() < math.exp(power)
 
         if accept:
             #Value accepted/improved

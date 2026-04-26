@@ -9,7 +9,7 @@ def get_total_wire_len(wires, block_positions):
         x1, y1 = block_positions[int(block1)]
         x2, y2 = block_positions[int(block2)]
         manh_dist = abs(x1 - x2) + abs(y1 - y2)
-        total_len += manh_dist * weight
+        total_len += manh_dist * weight * 100
     return total_len
 
 
