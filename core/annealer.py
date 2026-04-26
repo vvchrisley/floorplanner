@@ -36,7 +36,7 @@ class Annealer:
         """
 
         if self.paused:
-            return self.positions, self.cost
+            return self.positions, self.cost, False
 
         pos1, pos2 = random.sample(range(len(self.S0)), 2)
 
@@ -91,7 +91,7 @@ class Annealer:
         self.temperature *= self.cooling_rate
         self.iteration += 1
 
-        return self.positions, self.cost
+        return self.positions, self.cost, accept
 
     # Toggle Paused
     def toggle_pause(self):

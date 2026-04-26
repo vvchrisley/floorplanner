@@ -115,7 +115,7 @@ class FloorplannerGUI(QWidget):
             self.status.setText(f"Done at iter {self.annealer.iteration}")
             return
 
-        pos, cost = self.annealer.step()
+        pos, cost, accept = self.annealer.step()
 
         temp = getattr(self.annealer, "temperature", None)
 
@@ -139,7 +139,8 @@ class FloorplannerGUI(QWidget):
             f"color: rgb({r}, {g}, {b});"
         )
 
-        self.draw(pos)
+        if accept:
+            self.draw(pos)
 
     def draw(self, positions):
         self.ax.clear()
